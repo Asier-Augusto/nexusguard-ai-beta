@@ -1,0 +1,84 @@
+NexusGuard AI — Beta pública
+Copyright (c) 2026 Asier Augusto Schaefer. Todos los derechos reservados.
+All rights reserved.
+
+====================================================================
+ESPAÑOL
+====================================================================
+
+Este repositorio, incluido su código fuente, contenido formativo, banco de
+preguntas, diseño, textos, imágenes y documentación (el «Software»), es una
+obra protegida por la legislación de propiedad intelectual (Real Decreto
+Legislativo 1/1996, Texto Refundido de la Ley de Propiedad Intelectual, y los
+tratados internacionales aplicables, incluido el Convenio de Berna).
+
+El Software se publica ÚNICAMENTE para que pueda ser consultado. La
+visibilidad pública del repositorio NO concede ninguna licencia.
+
+Se permite exclusivamente:
+  - Ver el código en GitHub y leerlo con fines de evaluación personal (por
+    ejemplo, procesos de selección o revisión académica).
+  - Las acciones que las Condiciones de Servicio de GitHub permiten sobre los
+    repositorios públicos dentro de la propia plataforma (ver y hacer «fork»),
+    sin que ello implique ninguno de los derechos que se excluyen abajo.
+
+Queda prohibido, salvo autorización previa y por escrito del titular:
+  - Copiar, reproducir o descargar el Software, total o parcialmente, para
+    usarlo fuera de lo indicado arriba.
+  - Modificarlo, adaptarlo, traducirlo o crear obras derivadas.
+  - Distribuirlo, publicarlo, sublicenciarlo, venderlo o cederlo.
+  - Usarlo, en todo o en parte, con fines comerciales o para prestar servicios
+    a terceros.
+  - Presentarlo como trabajo propio, en todo o en parte, en entornos
+    académicos o profesionales.
+  - Utilizarlo para entrenar, ajustar o evaluar modelos de inteligencia
+    artificial o aprendizaje automático, o incluirlo en conjuntos de datos.
+  - Utilizarlo para campañas de phishing reales, sin autorización de la
+    organización destinataria, o para cualquier otro fin ilícito.
+
+Cualquier uso no autorizado podrá dar lugar a las acciones civiles y penales
+que correspondan.
+
+EL SOFTWARE SE PROPORCIONA «TAL CUAL», SIN GARANTÍA DE NINGÚN TIPO. EN NINGÚN
+CASO EL TITULAR SERÁ RESPONSABLE DE DAÑOS DERIVADOS DE SU USO.
+
+Para solicitar permisos: abrir una «issue» en este repositorio o contactar
+con el titular a través de su perfil de GitHub (@MinicobosGap).
+
+====================================================================
+ENGLISH
+====================================================================
+
+This repository, including its source code, training content, question bank,
+design, text, images and documentation (the "Software"), is protected by
+copyright law.
+
+The Software is published FOR VIEWING ONLY. Public visibility of this
+repository does NOT grant any licence.
+
+You may only:
+  - View the code on GitHub and read it for personal evaluation purposes
+    (e.g. recruitment or academic review).
+  - Perform the actions that GitHub's Terms of Service allow for public
+    repositories within the GitHub platform (view and fork), without this
+    granting any of the rights excluded below.
+
+Without prior written permission from the copyright holder, you may NOT:
+  - Copy, reproduce or download the Software, in whole or in part, for any use
+    other than the above.
+  - Modify, adapt, translate or create derivative works.
+  - Distribute, publish, sublicense, sell or transfer it.
+  - Use it, in whole or in part, for commercial purposes or to provide
+    services to third parties.
+  - Present it, in whole or in part, as your own work in academic or
+    professional settings.
+  - Use it to train, fine-tune or evaluate artificial intelligence or machine
+    learning models, or include it in datasets.
+  - Use it for real phishing campaigns, without the authorisation of the
+    target organisation, or for any other unlawful purpose.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. IN NO EVENT
+SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY DAMAGES ARISING FROM ITS USE.
+
+To request permission, open an issue in this repository or contact the
+copyright holder through their GitHub profile (@MinicobosGap).

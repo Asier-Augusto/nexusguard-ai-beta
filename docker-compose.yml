@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nexusguard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexusguard
+      POSTGRES_PASSWORD: nexusguard_dev
+      POSTGRES_DB: nexusguard
+    ports:
+      # 5433 en el host para no chocar con un PostgreSQL local en 5432.
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexusguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Servidor de inferencia local. Ollama usará la GPU automáticamente vía el
+  # driver NVIDIA (requiere Docker Desktop con soporte WSL2/GPU habilitado).
+  #
+  # La GPU real de este equipo es una RTX 3050 Ti Laptop con 4 GB de VRAM, así
+  # que el modelo por defecto es qwen2.5:3b-instruct (~2 GB): es el mayor que
+  # entra entero en VRAM. Un 14b (~9 GB) cabría en disco pero se ejecutaría en
+  # CPU/RAM, con decenas de segundos de latencia por respuesta.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: nexusguard-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  pgdata:
+  ollama_data:

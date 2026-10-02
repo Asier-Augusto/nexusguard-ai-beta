@@ -1,0 +1,515 @@
+// Esquema de datos de NexusGuard AI
+// Fuente única de verdad para la plataforma (Next.js API routes)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Sector {
+  LOGISTICA
+  SANIDAD
+  FINANZAS
+  RETAIL
+  HOSTELERIA
+  INDUSTRIA
+  TECNOLOGIA
+  EDUCACION
+  ADMINISTRACION_PUBLICA
+  OTRO
+}
+
+enum Departamento {
+  DIRECCION
+  RRHH
+  FINANZAS
+  IT
+  LOGISTICA
+  VENTAS
+  MARKETING
+  ATENCION_CLIENTE
+  LEGAL
+  OPERACIONES
+  OTRO
+}
+
+enum RolUsuario {
+  EMPLEADO
+  DPO
+  ADMIN
+}
+
+enum ModuloClave {
+  FORMACION
+  EVALUACION_ADAPTATIVA
+  SIMULADOR_PHISHING
+  COMMAND_CENTER_DPO
+}
+
+enum TemaFormacion {
+  WINDOWS
+  LINUX
+  MACOS
+  IOS
+  ANDROID
+  EMAIL
+  DOBLE_FACTOR
+  IOT
+  SEGURIDAD_DATO
+  USO_IA
+  CONTRASENAS
+}
+
+enum EstadoCampania {
+  BORRADOR
+  PROGRAMADA
+  ACTIVA
+  FINALIZADA
+}
+
+/// Por donde llega el senuelo. Son los tres nombres del oficio: phishing por
+/// correo, smishing por SMS y vishing por llamada. El canal condiciona el
+/// formato de lo que escribe la IA (un SMS no tiene asunto ni remitente con
+/// arroba) y lo que ve el empleado en el buzon.
+enum CanalCampania {
+  EMAIL
+  SMS
+  LLAMADA
+}
+
+/// Cuanto se esfuerza el senuelo en no parecerlo. Se guarda porque una tasa de
+/// clic solo es comparable entre campanas de la misma dificultad.
+enum DificultadSenuelo {
+  FACIL
+  MEDIA
+  DIFICIL
+}
+
+// --- Perfil de la empresa (cuestionario del DPO) ---------------------------
+// Los valores coinciden a proposito con los de TemaFormacion para los sistemas
+// operativos, de modo que la Fase 3 pueda mapear perfil -> pildora sin traducir.
+
+enum SistemaOperativo {
+  WINDOWS
+  MACOS
+  LINUX
+  ANDROID
+  IOS
+}
+
+enum ProcesoCritico {
+  FACTURACION
+  NOMINAS
+  COMPRAS_PROVEEDORES
+  ATENCION_CLIENTE
+  GESTION_ENVIOS
+  DESARROLLO_SOFTWARE
+  ADMINISTRACION_SISTEMAS
+  GESTION_DOCUMENTAL
+  CONTRATACION
+  TRATAMIENTO_DATOS_PERSONALES
+}
+
+enum HerramientaCorporativa {
+  MICROSOFT_365
+  GOOGLE_WORKSPACE
+  SLACK
+  TEAMS
+  ZOOM
+  SAP
+  SALESFORCE
+  JIRA
+  DROPBOX
+  VPN_CORPORATIVA
+  ERP_PROPIO
+  CRM_PROPIO
+}
+
+enum Normativa {
+  RGPD
+  LOPDGDD
+  ENS
+  ISO_27001
+  ISO_42001
+  NIS2
+  PCI_DSS
+  DORA
+}
+
+model Company {
+  id           String         @id @default(cuid())
+  name         String
+  sector       Sector
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  profile      CompanyProfile?
+  users        User[]
+  modules      ModuleToggle[]
+  campaigns    PhishingCampaign[]
+  adaptedPills AdaptedPillContent[]
+  questionPool AdaptedQuestionPool[]
+  report       ComplianceReport?
+}
+
+/// Perfilado que rellena el DPO en el onboarding: con qué trabaja la empresa y
+/// qué marcos normativos le aplican. Condiciona los señuelos del simulador de
+/// phishing y el marco normativo del informe de cumplimiento.
+///
+/// Se modela con listas escalares en lugar de cuatro tablas puente porque las
+/// cuatro relaciones son de simple pertenencia, sin atributos propios que
+/// colgar de la relación. Para la ontología de Neo4j (Fase 6), cada elemento
+/// de cada lista se convierte directamente en una arista desde la empresa:
+///   sistemasOperativos -> (:Empresa)-[:USA_SO]->(:SistemaOperativo)
+///   procesos           -> (:Empresa)-[:OPERA]->(:Proceso)
+///   herramientas       -> (:Empresa)-[:USA]->(:Herramienta)
+///   normativas         -> (:Empresa)-[:SUJETA_A]->(:Normativa)
+/// Las etiquetas legibles y los iconos de cada nodo salen del catálogo de UI
+/// en src/lib/constants.ts.
+model CompanyProfile {
+  id                 String   @id @default(cuid())
+  companyId          String   @unique
+  company            Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  sistemasOperativos SistemaOperativo[]
+  procesos           ProcesoCritico[]
+  herramientas       HerramientaCorporativa[]
+  /// Herramientas propias de la empresa que no están en el catálogo cerrado.
+  otrasHerramientas  String[]
+  normativas         Normativa[]
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model ModuleToggle {
+  id        String      @id @default(cuid())
+  companyId String
+  company   Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  moduleKey ModuloClave
+  enabled   Boolean     @default(false)
+  unlockedAt DateTime?
+
+  @@unique([companyId, moduleKey])
+}
+
+model User {
+  id            String        @id @default(cuid())
+  companyId     String
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name          String
+  email         String        @unique
+  role          RolUsuario    @default(EMPLEADO)
+  department    Departamento
+  riskScore     Int           @default(50)
+  createdAt     DateTime      @default(now())
+
+  trainingProgress TrainingProgress[]
+  quizAttempts     QuizAttempt[]
+  phishingResults  PhishingResult[]
+  riskSnapshots    RiskScoreSnapshot[]
+}
+
+model TrainingPill {
+  id              String        @id @default(cuid())
+  topic           TemaFormacion
+  title           String
+  durationMinutes Int
+  summary         String
+  /// Contenido generico, comun a todas las empresas. Es el que se sirve
+  /// mientras no haya una version adaptada en `AdaptedPillContent`, y el que
+  /// se usa de esqueleto y de red de seguridad al generarla.
+  content         Json
+  createdAt       DateTime      @default(now())
+
+  progress        TrainingProgress[]
+  adaptedContent  AdaptedPillContent[]
+}
+
+/// El contenido de una pildora reescrito por la IA para UNA empresa concreta,
+/// a partir de su perfil (sector, normativas, procesos, herramientas y
+/// sistemas). Mismo juego, contenido distinto.
+///
+/// Por que se cachea por EMPRESA y no por sector: dos empresas del mismo
+/// sector no declaran las mismas herramientas ni los mismos procesos, asi que
+/// una plantilla por sector volveria a ser contenido enlatado. Y dentro de una
+/// misma empresa todos los empleados tienen que ver el MISMO material, o sus
+/// resultados dejan de ser comparables entre si.
+///
+/// `perfilHuella` es lo que caduca la cache: si el DPO cambia el perfil, la
+/// huella deja de coincidir, esta fila se ignora (se vuelve a servir el
+/// contenido generico) y se regenera cuando alguien lo pida. No se borra: si
+/// la IA no esta disponible, tener contenido de un perfil anterior sigue
+/// siendo mejor que no tener nada que ensenar.
+model AdaptedPillContent {
+  id           String       @id @default(cuid())
+  companyId    String
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  pillId       String
+  pill         TrainingPill @relation(fields: [pillId], references: [id], onDelete: Cascade)
+  /// Mismo formato que `TrainingPill.content`: lo consume el mismo componente.
+  content      Json
+  perfilHuella String
+  /// Modelo de Ollama que lo escribio, para saber con que se genero cada cosa
+  /// cuando se compare contenido de distintas epocas.
+  modelo       String?
+  generatedAt  DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([companyId, pillId])
+}
+
+/// El pool de preguntas del test escrito por la IA para UNA empresa, tema a
+/// tema, a partir de su perfil. A un banco le tocan DORA y PCI; a una
+/// hosteleria, el TPV y las reservas.
+///
+/// No sustituye al banco generico: lo encabeza. El motor mezcla, por nivel,
+/// las preguntas del pool con las genericas de ese nivel, de modo que un tema
+/// nunca se queda con menos preguntas de las que tenia. Es la misma regla de
+/// cuota que usa el banco de mensajes de Cazafraudes.
+///
+/// Se guarda por tema y no en un unico bloque porque la generacion es por
+/// tema: asi el progreso se ve tema a tema y un tema que falle no se lleva por
+/// delante a los demas.
+///
+/// `perfilHuella` caduca la cache igual que en `AdaptedPillContent`: si el DPO
+/// cambia el perfil, este pool se ignora -se evalua con el banco generico- y
+/// aparece como desactualizado hasta que alguien lo regenere.
+///
+/// Ojo con lo que NO esta calibrado: estas preguntas no tienen parametros IRT
+/// propios, asi que el motor les aplica los de por defecto de su nivel. El
+/// detalle de cada respuesta queda en `QuizResponse`, que es lo que permitira
+/// calibrarlas de verdad cuando haya datos.
+model AdaptedQuestionPool {
+  id           String        @id @default(cuid())
+  companyId    String
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  topic        TemaFormacion
+  /// Las preguntas con la misma forma que las del banco: id, level, prompt,
+  /// options, correct_index y explanation.
+  questions    Json
+  perfilHuella String
+  modelo       String?
+  generatedAt  DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([companyId, topic])
+}
+
+/// La narrativa del informe de cumplimiento que la IA escribio para UNA
+/// empresa: el resumen ejecutivo, la lectura de cada normativa y las
+/// recomendaciones.
+///
+/// Lo que NO se guarda aqui son las cifras: esas se recalculan siempre desde
+/// las tablas de formacion, evaluaciones y campanas. Guardar los porcentajes
+/// junto al texto invitaria a servir un numero viejo por comodidad, y el
+/// numero es justo la parte que tiene que ser cierta.
+///
+/// DOS HUELLAS Y NO UNA
+/// --------------------
+/// `perfilHuella` es la misma que usan la formacion y el pool: caduca cuando
+/// el DPO cambia el perfil. `datosHuella` firma los porcentajes con los que se
+/// escribio el texto, y esa cambia cada vez que alguien termina una pildora o
+/// pica en una campana. Lo que invalida un parrafo que dice "la cobertura del
+/// RGPD es del 78%" es que ese 78 deje de ser cierto, no que el perfil se haya
+/// tocado.
+///
+/// Si cualquiera de las dos deja de coincidir, el informe se marca como
+/// desactualizado y se sirve la narrativa determinista. La fila no se borra:
+/// saber que decia el informe anterior y desde cuando esta viejo es
+/// informacion.
+model ComplianceReport {
+  id           String   @id @default(cuid())
+  companyId    String   @unique
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// { resumen, porNormativa: [{ clave, texto }], recomendaciones: [...] }
+  narrativa    Json
+  perfilHuella String
+  datosHuella  String
+  modelo       String?
+  generatedAt  DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model TrainingProgress {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pillId      String
+  pill        TrainingPill @relation(fields: [pillId], references: [id], onDelete: Cascade)
+  completedAt DateTime?
+  score       Int?
+
+  @@unique([userId, pillId])
+}
+
+enum ModoEvaluacion {
+  TEMA_UNICO
+  MIXTO
+}
+
+/// Que capa del motor resolvio la evaluacion. Se guarda para no dar por hecho
+/// que hubo aprendizaje automatico cuando en realidad el motor degrado a la
+/// heuristica: dos intentos con puntuaciones parecidas no son comparables si
+/// uno lo resolvio la red y el otro no.
+enum MotorEvaluacion {
+  RED_IRT
+  IRT
+  HEURISTICA
+}
+
+model QuizAttempt {
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Tema principal del intento. En modo mixto, el primero de `topics`.
+  topic          TemaFormacion
+  /// Recorrido de dificultad tal cual lo devolvio el motor. Se conserva por
+  /// compatibilidad con los intentos anteriores a la Fase 4, que solo
+  /// guardaban { level, correct }; el detalle real vive en `responses`.
+  difficultyPath Json
+  finalLevel     Int
+  score          Int
+  createdAt      DateTime      @default(now())
+
+  /// Habilidad estimada por el motor y su error estandar, en la escala de IRT.
+  /// Nulos en los intentos antiguos, que no la calculaban.
+  abilityTheta   Float?
+  abilityStdErr  Float?
+  engine         MotorEvaluacion @default(HEURISTICA)
+  mode           ModoEvaluacion  @default(TEMA_UNICO)
+  /// Todos los temas que entraron en la evaluacion (uno solo en modo simple).
+  topics         TemaFormacion[]
+
+  responses      QuizResponse[]
+}
+
+/// Una respuesta concreta dentro de un intento.
+///
+/// Esta tabla no existia y es la que cierra el circulo del aprendizaje: sin
+/// saber QUE pregunta se hizo y con que parametros, no hay forma de recalibrar
+/// el banco ni de reentrenar la red con datos reales. Hasta ahora solo se
+/// guardaba el nivel y si se acerto, que no da para nada.
+///
+/// Se guardan tambien los parametros IRT y la probabilidad que predijo la red
+/// EN EL MOMENTO de plantear la pregunta. Son datos que cambiaran cuando se
+/// recalibre o se reentrene, asi que registrarlos aqui permite reconstruir
+/// despues por que el motor eligio lo que eligio.
+model QuizResponse {
+  id              String      @id @default(cuid())
+  attemptId       String
+  attempt         QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  /// Posicion dentro del intento, empezando en 1.
+  order           Int
+  /// Id de la pregunta. Las que genera la IA al vuelo empiezan por "gen-" y no
+  /// estan en el banco, de ahi que sea un String suelto y no una relacion.
+  itemId          String
+  topic           TemaFormacion
+  level           Int
+  correct         Boolean
+  difficultyB     Float?
+  discriminationA Float?
+  /// Probabilidad de acierto que estimo la red antes de plantear la pregunta.
+  predictedProb   Float?
+  /// Habilidad estimada y error estandar despues de contestar.
+  thetaAfter      Float?
+  stdErrAfter     Float?
+  /// "banco" o "ollama".
+  source          String      @default("banco")
+  elapsedMs       Int?
+  createdAt       DateTime    @default(now())
+
+  @@index([attemptId, order])
+  @@index([itemId])
+}
+
+/// Una campana de concienciacion: el senuelo que se manda a la plantilla.
+///
+/// Todo lo que hay aqui es material de SIMULACION para formacion interna
+/// autorizada. `department` no es el destinatario -la campana va a toda la
+/// plantilla, como las de verdad- sino el pretexto sobre el que se construye
+/// el senuelo: "un correo que parece de RRHH".
+///
+/// El remitente y las senales de alerta no se guardaban y el modelo ya los
+/// devolvia: se perdian en cada generacion. Ahora se persisten porque son
+/// justo lo que necesita la pagina de concienciacion para explicarle al
+/// empleado que le delataba el mensaje que acaba de pulsar.
+model PhishingCampaign {
+  id           String         @id @default(cuid())
+  companyId    String
+  company      Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name         String
+  department   Departamento
+  canal        CanalCampania  @default(EMAIL)
+  dificultad   DificultadSenuelo @default(MEDIA)
+  /// En SMS es el texto corto y en LLAMADA el guion; el nombre viene de
+  /// cuando solo habia correo y se mantiene para no migrar datos sembrados.
+  emailSubject String
+  emailBody    String
+  /// Remitente suplantado. En SMS es el alfanumerico ("NEXUS-IT") y en
+  /// LLAMADA, quien dice ser quien llama; por eso el correo es opcional.
+  senderName   String?
+  senderEmail  String?
+  /// Que delataba el senuelo. Se le ensena al empleado que pica, y es la
+  /// parte formativa de toda la campana.
+  redFlags     String[]
+  status       EstadoCampania @default(BORRADOR)
+  /// "ollama" si lo escribio el modelo, "fallback" si salio de plantilla.
+  origen       String?
+  modelo       String?
+  /// Huella del perfil con el que se escribio, como en el resto de contenido
+  /// adaptado. Aqui NO caduca ninguna cache: una campana ya lanzada es un
+  /// hecho historico y no se regenera. Sirve para saber, al comparar dos
+  /// campanas, si la empresa era la misma cuando se escribieron.
+  perfilHuella String?
+  createdAt    DateTime       @default(now())
+  launchedAt   DateTime?
+
+  results      PhishingResult[]
+}
+
+/// Que hizo un empleado concreto con el senuelo de una campana.
+///
+/// `token` es el identificador del enlace instrumentado: cada empleado recibe
+/// el suyo, y es lo que permite saber QUIEN hizo clic sin pedirle que se
+/// identifique. Se genera al lanzar la campana, no al crearla, porque una
+/// campana en borrador todavia no tiene destinatarios.
+///
+/// NO se guarda la direccion IP a proposito. Para medir concienciacion basta
+/// con saber que hubo clic y cuando; la IP seria un dato personal mas, sin
+/// finalidad que lo justifique, en una plataforma que se vende con el RGPD por
+/// delante. El `userAgent` si, porque es lo unico que permite distinguir un
+/// clic de una persona de la pre-carga automatica de un antivirus de correo.
+model PhishingResult {
+  id           String           @id @default(cuid())
+  campaignId   String
+  campaign     PhishingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Identificador del enlace instrumentado de ESTE empleado en ESTA campana.
+  token        String?          @unique
+  clicked      Boolean          @default(false)
+  reported     Boolean          @default(false)
+  /// Momento de la primera reaccion, sea clic o reporte. Se conserva porque
+  /// es de lo que tiran las consultas anteriores a esta fase.
+  respondedAt  DateTime?
+  sentAt       DateTime?
+  clickedAt    DateTime?
+  reportedAt   DateTime?
+  userAgent    String?
+
+  @@unique([campaignId, userId])
+}
+
+model RiskScoreSnapshot {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score       Int
+  breakdown   Json
+  computedAt  DateTime @default(now())
+}

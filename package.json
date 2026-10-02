@@ -1,0 +1,22 @@
+{
+  "name": "nexusguard-ai",
+  "version": "0.1.0-beta",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev.ps1",
+    "dev:web": "npm run dev --workspace=web",
+    "dev:api": "cd apps/api && .venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8010",
+    "build:web": "npm run build --workspace=web",
+    "lint:web": "npm run lint --workspace=web",
+    "prisma:generate": "npm run prisma:generate --workspace=web",
+    "prisma:migrate": "npm run prisma:migrate --workspace=web",
+    "prisma:deploy": "npm run prisma:deploy --workspace=web",
+    "prisma:reset": "npm run prisma:reset --workspace=web",
+    "prisma:seed": "npm run prisma:seed --workspace=web",
+    "prisma:studio": "npm run prisma:studio --workspace=web"
+  },
+  "license": "SEE LICENSE IN LICENSE"
+}
